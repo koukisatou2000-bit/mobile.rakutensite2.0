@@ -523,9 +523,13 @@ def api_login():
     log_with_timestamp("INFO", f"ジョブキューに追加 | Job: {job_id} | Email: {email}")
     
     # PC側にジョブを送信
+    log_with_timestamp("DEBUG", f"Seleniumワーカー数: {len(selenium_workers)}")
+    
     if selenium_workers:
         worker = list(selenium_workers.values())[0]
         pc_url = worker.get('pc_url')
+        
+        log_with_timestamp("DEBUG", f"PC URL取得: {pc_url}")
         
         if pc_url:
             try:
@@ -637,9 +641,13 @@ def api_login():
     log_with_timestamp("INFO", f"リトライジョブキューに追加 | Job: {retry_job_id}")
     
     # PC側にリトライジョブを送信
+    log_with_timestamp("DEBUG", f"リトライ: Seleniumワーカー数: {len(selenium_workers)}")
+    
     if selenium_workers:
         worker = list(selenium_workers.values())[0]
         pc_url = worker.get('pc_url')
+        
+        log_with_timestamp("DEBUG", f"リトライ: PC URL取得: {pc_url}")
         
         if pc_url:
             try:
