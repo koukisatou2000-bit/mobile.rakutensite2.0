@@ -259,11 +259,56 @@
             100% { transform: rotate(360deg); }
         }
 
-        @media only screen and (max-width: 560px) {
+        @media only screen and (max-width: 768px) {
+            body {
+                padding: 0;
+                background-color: #ffffff;
+            }
+
             .container {
                 width: 100vw;
                 max-width: 100vw;
                 min-height: 100vh;
+                box-shadow: none;
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+                margin-bottom: 30px;
+            }
+
+            .logo {
+                margin-bottom: 30px;
+            }
+
+            input[type="text"] {
+                font-size: 16px;
+                padding: 12px;
+            }
+
+            .next-button {
+                padding: 14px;
+                font-size: 15px;
+            }
+
+            .terms-text,
+            .secret-mode {
+                font-size: 12px;
+            }
+
+            .footer-links {
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: center;
+            }
+
+            .footer-links a {
+                font-size: 12px;
+            }
+
+            .register-section {
+                padding: 15px;
             }
         }
     </style>
