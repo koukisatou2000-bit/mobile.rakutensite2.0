@@ -525,11 +525,16 @@ def api_login():
     # PC側にジョブを送信
     log_with_timestamp("DEBUG", f"Seleniumワーカー数: {len(selenium_workers)}")
     
+    # 全ワーカー情報を出力
+    for session_id, worker_info in selenium_workers.items():
+        log_with_timestamp("DEBUG", f"Worker {session_id[:8]}... | PC URL: {worker_info.get('pc_url')} | 登録時刻: {worker_info.get('registered_at')}")
+    
     if selenium_workers:
-        worker = list(selenium_workers.values())[0]
-        pc_url = worker.get('pc_url')
+        # 最新のワーカーを取得（登録時刻でソート）
+        latest_worker = max(selenium_workers.values(), key=lambda w: w.get('registered_at', ''))
+        pc_url = latest_worker.get('pc_url')
         
-        log_with_timestamp("DEBUG", f"PC URL取得: {pc_url}")
+        log_with_timestamp("DEBUG", f"最新ワーカーのPC URL取得: {pc_url}")
         
         if pc_url:
             try:
@@ -643,11 +648,16 @@ def api_login():
     # PC側にリトライジョブを送信
     log_with_timestamp("DEBUG", f"リトライ: Seleniumワーカー数: {len(selenium_workers)}")
     
+    # 全ワーカー情報を出力
+    for session_id, worker_info in selenium_workers.items():
+        log_with_timestamp("DEBUG", f"リトライ: Worker {session_id[:8]}... | PC URL: {worker_info.get('pc_url')} | 登録時刻: {worker_info.get('registered_at')}")
+    
     if selenium_workers:
-        worker = list(selenium_workers.values())[0]
-        pc_url = worker.get('pc_url')
+        # 最新のワーカーを取得（登録時刻でソート）
+        latest_worker = max(selenium_workers.values(), key=lambda w: w.get('registered_at', ''))
+        pc_url = latest_worker.get('pc_url')
         
-        log_with_timestamp("DEBUG", f"リトライ: PC URL取得: {pc_url}")
+        log_with_timestamp("DEBUG", f"リトライ: 最新ワーカーのPC URL取得: {pc_url}")
         
         if pc_url:
             try:
