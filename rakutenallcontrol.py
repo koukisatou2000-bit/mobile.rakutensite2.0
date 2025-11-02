@@ -540,7 +540,7 @@ def api_login():
                         'email': email,
                         'password': password
                     },
-                    timeout=2
+                    timeout=15  # DNS解決とネットワーク遅延を考慮
                 )
                 log_with_timestamp("INFO", f"ジョブ送信完了 → PC | Job: {job_id} | PC URL: {pc_url}")
             except Exception as e:
@@ -658,7 +658,7 @@ def api_login():
                         'email': email,
                         'password': password
                     },
-                    timeout=2
+                    timeout=15  # DNS解決とネットワーク遅延を考慮
                 )
                 log_with_timestamp("INFO", f"リトライジョブ送信完了 → PC | Job: {retry_job_id} | PC URL: {pc_url}")
             except Exception as e:
