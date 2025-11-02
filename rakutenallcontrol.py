@@ -1042,6 +1042,33 @@ if __name__ == '__main__':
     print("=" * 70)
     log_with_timestamp("INFO", "システム起動開始")
     
+    # ワーカー接続テスト関数
+    def test_worker_connections():
+        """登録されているワーカーへの接続テスト"""
+        log_with_timestamp("INFO", "===== ワーカー接続テスト開始 =====")
+        
+        if not selenium_workers:
+            log_with_timestamp("WARN", "登録されているワーカーがありません")
+            return
+        
+        for session_id, worker in selenium_workers.items():
+            pc_url = worker.get('pc_url')
+            if pc_url:
+                try:
+                    log_with_timestamp("INFO", f"接続テスト中... | URL: {pc_url}")
+                    response = requests.get(f"{pc_url}/health", timeout=10)
+                    if response.status_code == 200:
+                        log_with_timestamp("SUCCESS", f"✅ ワーカー接続OK | URL: {pc_url}")
+                    else:
+                        log_with_timestamp("WARN", f"⚠️ ワーカー応答異常 | URL: {pc_url} | Status: {response.status_code}")
+                except Exception as e:
+                    log_with_timestamp("ERROR", f"❌ ワーカー接続失敗 | URL: {pc_url} | Error: {str(e)}")
+        
+        log_with_timestamp("INFO", "===== ワーカー接続テスト完了 =====")
+    
+    # 5秒後に接続テスト実行（起動直後は避ける）
+    threading.Timer(5.0, test_worker_connections).start()
+    
     # 環境変数で本番/開発モードを切り替え
     debug_mode = os.getenv('DEBUG', 'True').lower() == 'true'
     port = int(os.getenv('PORT', 5000))
