@@ -404,24 +404,51 @@ def api_selenium_register():
     
     log_with_timestamp("INFO", f"Seleniumワーカー登録完了（HTTP）| Worker: {worker_id} | PC URL: {pc_url} | Session: {session_id}")
     
-    # DNS事前解決（即座に実行）
-    def presolve_dns():
+    # 接続確認を即座に実行（同期的に）
+    def verify_connection():
         import socket
         from urllib.parse import urlparse
-        try:
-            hostname = urlparse(pc_url).hostname
-            log_with_timestamp("INFO", f"DNS事前解決開始 | Host: {hostname}")
-            socket.getaddrinfo(hostname, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
-            log_with_timestamp("SUCCESS", f"✅ DNS事前解決完了 | Host: {hostname}")
+        
+        max_retries = 5
+        retry_delay = 2
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                log_with_timestamp("INFO", f"📡 接続確認開始 ({attempt}/{max_retries}) | URL: {pc_url}")
+                
+                # DNS解決
+                hostname = urlparse(pc_url).hostname
+                log_with_timestamp("INFO", f"🔍 DNS解決中... | Host: {hostname}")
+                ip_addresses = socket.getaddrinfo(hostname, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+                log_with_timestamp("SUCCESS", f"✅ DNS解決成功 | Host: {hostname} | IPs: {[ip[4][0] for ip in ip_addresses[:3]]}")
+                
+                # HTTP接続テスト
+                log_with_timestamp("INFO", f"🌐 HTTP接続テスト中... | URL: {pc_url}/health")
+                response = requests.get(f"{pc_url}/health", timeout=15)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    log_with_timestamp("SUCCESS", f"✅✅✅ ワーカー接続確認成功！ | URL: {pc_url} | Status: {result}")
+                    return True
+                else:
+                    log_with_timestamp("WARN", f"⚠️ ワーカー応答異常 | Status: {response.status_code}")
+                    
+            except socket.gaierror as e:
+                log_with_timestamp("ERROR", f"❌ DNS解決失敗 ({attempt}/{max_retries}) | Error: {str(e)}")
+            except requests.exceptions.Timeout as e:
+                log_with_timestamp("ERROR", f"❌ 接続タイムアウト ({attempt}/{max_retries}) | Error: {str(e)}")
+            except Exception as e:
+                log_with_timestamp("ERROR", f"❌ 接続失敗 ({attempt}/{max_retries}) | Error: {str(e)}")
             
-            # 接続テスト
-            response = requests.get(f"{pc_url}/health", timeout=10)
-            log_with_timestamp("SUCCESS", f"✅ ワーカー接続確認OK | URL: {pc_url}")
-        except Exception as e:
-            log_with_timestamp("ERROR", f"❌ DNS事前解決/接続確認失敗 | Error: {str(e)}")
+            if attempt < max_retries:
+                log_with_timestamp("INFO", f"⏳ {retry_delay}秒後にリトライします...")
+                time.sleep(retry_delay)
+        
+        log_with_timestamp("CRITICAL", f"🚨 ワーカー接続確認失敗（{max_retries}回試行） | URL: {pc_url}")
+        return False
     
-    # 別スレッドで即座に実行（登録レスポンスをブロックしない）
-    threading.Thread(target=presolve_dns, daemon=True).start()
+    # 別スレッドで実行（登録レスポンスをブロックしない）
+    threading.Thread(target=verify_connection, daemon=True).start()
     
     return jsonify({
         'success': True,
