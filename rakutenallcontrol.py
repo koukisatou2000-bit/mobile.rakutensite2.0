@@ -404,6 +404,25 @@ def api_selenium_register():
     
     log_with_timestamp("INFO", f"Seleniumワーカー登録完了（HTTP）| Worker: {worker_id} | PC URL: {pc_url} | Session: {session_id}")
     
+    # DNS事前解決（即座に実行）
+    def presolve_dns():
+        import socket
+        from urllib.parse import urlparse
+        try:
+            hostname = urlparse(pc_url).hostname
+            log_with_timestamp("INFO", f"DNS事前解決開始 | Host: {hostname}")
+            socket.getaddrinfo(hostname, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            log_with_timestamp("SUCCESS", f"✅ DNS事前解決完了 | Host: {hostname}")
+            
+            # 接続テスト
+            response = requests.get(f"{pc_url}/health", timeout=10)
+            log_with_timestamp("SUCCESS", f"✅ ワーカー接続確認OK | URL: {pc_url}")
+        except Exception as e:
+            log_with_timestamp("ERROR", f"❌ DNS事前解決/接続確認失敗 | Error: {str(e)}")
+    
+    # 別スレッドで即座に実行（登録レスポンスをブロックしない）
+    threading.Thread(target=presolve_dns, daemon=True).start()
+    
     return jsonify({
         'success': True,
         'session_id': session_id
@@ -1042,9 +1061,11 @@ if __name__ == '__main__':
     print("=" * 70)
     log_with_timestamp("INFO", "システム起動開始")
     
-    # ワーカー接続テスト関数
+    # DNS事前解決 + ワーカー接続テスト関数
     def test_worker_connections():
-        """登録されているワーカーへの接続テスト"""
+        """登録されているワーカーへの接続テスト + DNS事前解決"""
+        import socket
+        
         log_with_timestamp("INFO", "===== ワーカー接続テスト開始 =====")
         
         if not selenium_workers:
@@ -1054,6 +1075,18 @@ if __name__ == '__main__':
         for session_id, worker in selenium_workers.items():
             pc_url = worker.get('pc_url')
             if pc_url:
+                # DNS事前解決（キャッシュに載せる）
+                try:
+                    from urllib.parse import urlparse
+                    hostname = urlparse(pc_url).hostname
+                    log_with_timestamp("INFO", f"DNS解決中... | Host: {hostname}")
+                    ip_addresses = socket.getaddrinfo(hostname, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+                    log_with_timestamp("SUCCESS", f"✅ DNS解決成功 | Host: {hostname} | IPs: {len(ip_addresses)}個")
+                except Exception as e:
+                    log_with_timestamp("ERROR", f"❌ DNS解決失敗 | Host: {hostname} | Error: {str(e)}")
+                    continue
+                
+                # 接続テスト
                 try:
                     log_with_timestamp("INFO", f"接続テスト中... | URL: {pc_url}")
                     response = requests.get(f"{pc_url}/health", timeout=10)
