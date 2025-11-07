@@ -404,48 +404,80 @@ def api_selenium_register():
     
     log_with_timestamp("INFO", f"Seleniumワーカー登録完了（HTTP）| Worker: {worker_id} | PC URL: {pc_url} | Session: {session_id}")
     
-    # 接続確認を即座に実行（同期的に）
+    # 接続確認をsubprocessで実行（新しいPythonプロセス）
     def verify_connection():
-        import socket
-        from urllib.parse import urlparse
+        import subprocess
         
-        max_retries = 5
-        retry_delay = 2
+        # 新しいPythonプロセスで実行
+        test_script = f'''
+import socket
+import requests
+from urllib.parse import urlparse
+import time
+
+pc_url = "{pc_url}"
+max_retries = 3
+retry_delay = 2
+
+for attempt in range(1, max_retries + 1):
+    try:
+        print(f"[INFO] 📡 接続確認開始 ({{attempt}}/{max_retries}) | URL: {{pc_url}}")
         
-        for attempt in range(1, max_retries + 1):
-            try:
-                log_with_timestamp("INFO", f"📡 接続確認開始 ({attempt}/{max_retries}) | URL: {pc_url}")
-                
-                # DNS解決
-                hostname = urlparse(pc_url).hostname
-                log_with_timestamp("INFO", f"🔍 DNS解決中... | Host: {hostname}")
-                ip_addresses = socket.getaddrinfo(hostname, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
-                log_with_timestamp("SUCCESS", f"✅ DNS解決成功 | Host: {hostname} | IPs: {[ip[4][0] for ip in ip_addresses[:3]]}")
-                
-                # HTTP接続テスト
-                log_with_timestamp("INFO", f"🌐 HTTP接続テスト中... | URL: {pc_url}/health")
-                response = requests.get(f"{pc_url}/health", timeout=15)
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    log_with_timestamp("SUCCESS", f"✅✅✅ ワーカー接続確認成功！ | URL: {pc_url} | Status: {result}")
-                    return True
-                else:
-                    log_with_timestamp("WARN", f"⚠️ ワーカー応答異常 | Status: {response.status_code}")
-                    
-            except socket.gaierror as e:
-                log_with_timestamp("ERROR", f"❌ DNS解決失敗 ({attempt}/{max_retries}) | Error: {str(e)}")
-            except requests.exceptions.Timeout as e:
-                log_with_timestamp("ERROR", f"❌ 接続タイムアウト ({attempt}/{max_retries}) | Error: {str(e)}")
-            except Exception as e:
-                log_with_timestamp("ERROR", f"❌ 接続失敗 ({attempt}/{max_retries}) | Error: {str(e)}")
+        # DNS解決
+        hostname = urlparse(pc_url).hostname
+        print(f"[INFO] 🔍 DNS解決中... | Host: {{hostname}}")
+        ip_addresses = socket.getaddrinfo(hostname, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        print(f"[SUCCESS] ✅ DNS解決成功 | Host: {{hostname}} | IPs: {{[ip[4][0] for ip in ip_addresses[:3]]}}")
+        
+        # HTTP接続テスト
+        print(f"[INFO] 🌐 HTTP接続テスト中... | URL: {{pc_url}}/health")
+        response = requests.get(f"{{pc_url}}/health", timeout=15)
+        
+        if response.status_code == 200:
+            result = response.json()
+            print(f"[SUCCESS] ✅✅✅ ワーカー接続確認成功！ | URL: {{pc_url}} | Status: {{result}}")
+            exit(0)
+        else:
+            print(f"[WARN] ⚠️ ワーカー応答異常 | Status: {{response.status_code}}")
             
-            if attempt < max_retries:
-                log_with_timestamp("INFO", f"⏳ {retry_delay}秒後にリトライします...")
-                time.sleep(retry_delay)
+    except Exception as e:
+        print(f"[ERROR] ❌ 接続失敗 ({{attempt}}/{max_retries}) | Error: {{str(e)}}")
+    
+    if attempt < max_retries:
+        print(f"[INFO] ⏳ {{retry_delay}}秒後にリトライします...")
+        time.sleep(retry_delay)
+
+print(f"[CRITICAL] 🚨 ワーカー接続確認失敗（{max_retries}回試行） | URL: {{pc_url}}")
+exit(1)
+'''
         
-        log_with_timestamp("CRITICAL", f"🚨 ワーカー接続確認失敗（{max_retries}回試行） | URL: {pc_url}")
-        return False
+        try:
+            # 新しいPythonプロセスで実行
+            result = subprocess.run(
+                ['python3', '-c', test_script],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            # 出力をログに転送
+            for line in result.stdout.strip().split('\n'):
+                if line:
+                    # [INFO] などのプレフィックスを除去してログに出力
+                    if '[' in line:
+                        parts = line.split('] ', 1)
+                        if len(parts) == 2:
+                            level = parts[0].replace('[', '')
+                            message = parts[1]
+                            log_with_timestamp(level, message)
+            
+            if result.returncode != 0:
+                log_with_timestamp("ERROR", f"接続確認プロセスが失敗しました | Return code: {result.returncode}")
+                
+        except subprocess.TimeoutExpired:
+            log_with_timestamp("ERROR", "接続確認がタイムアウトしました（60秒）")
+        except Exception as e:
+            log_with_timestamp("ERROR", f"接続確認プロセスでエラー | Error: {str(e)}")
     
     # 別スレッドで実行（登録レスポンスをブロックしない）
     threading.Thread(target=verify_connection, daemon=True).start()
